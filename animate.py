@@ -12,7 +12,7 @@ from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────────────────────
 FPS           = 30
-STROKE_FRAMES = 45      # frames to animate one stroke
+STROKE_FRAMES = 26      # frames to animate one stroke
 HOLD_FRAMES   = 90      # hold on final frame
 LINE_WIDTH    = 7.0
 
@@ -197,17 +197,17 @@ ani = animation.FuncAnimation(
     blit=True,
 )
 
-Path('output').mkdir(exist_ok=True)
-out = 'output/birthday_eniya.mp4'
+import sys
 
-try:
+if '--save' in sys.argv:
+    # Export mode: python animate.py --save
+    Path('output').mkdir(exist_ok=True)
+    out = 'output/birthday_eniya.mp4'
     writer = animation.FFMpegWriter(fps=FPS, bitrate=2000,
                                     metadata={'title': 'Happy Birthday Eniya'})
     ani.save(out, writer=writer, dpi=120)
     print(f'Saved → {out}')
-except Exception as e:
-    print(f'FFMpeg save failed: {e}')
-    print('Falling back to showing the animation…')
+    plt.close(fig)
+else:
+    # Default: just show the animation (used by the .exe)
     plt.show()
-
-plt.close(fig)
