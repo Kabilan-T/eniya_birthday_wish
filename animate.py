@@ -14,7 +14,7 @@ from pathlib import Path
 FPS           = 30
 STROKE_FRAMES = 45      # frames to animate one stroke
 HOLD_FRAMES   = 90      # hold on final frame
-LINE_WIDTH    = 3.5
+LINE_WIDTH    = 7.0
 
 # Colours
 BG         = '#0d1117'
@@ -84,9 +84,9 @@ TOTAL_FRAMES = N_STROKES * STROKE_FRAMES + HOLD_FRAMES
 total_w = len(LETTERS) * (LETTER_W + GAP) - GAP   # ≈ 7.2 units
 PAD_L, PAD_R = 0.5, 0.5
 PAD_B        = 1.8    # space below letters for formula stack
-PAD_T        = 1.1    # space above for title
+PAD_T        = 2.0    # space above for title
 
-fig, ax = plt.subplots(figsize=(14, 6))
+fig, ax = plt.subplots(figsize=(14, 8))
 fig.patch.set_facecolor(BG)
 ax.set_facecolor(BG)
 ax.set_xlim(-PAD_L, total_w + PAD_R)
@@ -96,8 +96,8 @@ ax.axis('off')
 
 # ── Static title — auto-sized to span the full axes width ─────────────────────
 title = ax.text(
-    total_w / 2, 1.0 + 0.7,
-    'Happy Birthday',
+    total_w / 2, 1.0 + 1.3,
+    'Happy 30th Birthday',
     ha='center', va='center',
     fontsize=32, fontweight='bold',
     color=C_TITLE, fontfamily='serif',
@@ -109,6 +109,16 @@ t_bb      = title.get_window_extent(renderer=renderer)
 ax_bb     = ax.get_window_extent(renderer=renderer)
 title.set_fontsize(32 * (ax_bb.width * 0.97 / t_bb.width))
 
+# ── Signature ─────────────────────────────────────────────────────────────────
+ax.text(
+    total_w + PAD_R - 0.05, -PAD_B + 0.1,
+    '— Aaron Stone',
+    ha='right', va='bottom',
+    fontsize=13, style='italic',
+    color=C_TITLE, alpha=0.35,
+    fontfamily='serif',
+)
+
 # ── Formula text artists — one per stroke, fixed below its letter ─────────────
 # Each starts invisible; becomes visible (alpha=1) when its stroke is drawn
 # and stays visible for the rest of the animation.
@@ -117,10 +127,10 @@ for gi, (li, s) in enumerate(all_strokes):
     # stroke index within this letter
     si = sum(1 for j, (lj, _) in enumerate(all_strokes) if lj == li and j < gi)
     fx = LETTERS[li]['x_off'] + LETTER_W / 2
-    fy = -0.22 - si * 0.32
+    fy = -0.22 - si * 0.20
     ft = ax.text(fx, fy, s['formula'],
                  ha='center', va='top',
-                 fontsize=9, color=C_FORMULA,
+                 fontsize=13, color=C_FORMULA,
                  fontfamily='monospace', alpha=0.0)
     formula_artists[gi] = ft
 
