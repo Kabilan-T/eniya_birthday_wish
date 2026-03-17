@@ -94,6 +94,17 @@ ax.set_ylim(-PAD_B, 1.0 + PAD_T)
 ax.set_aspect('equal')
 ax.axis('off')
 
+# ── Background grid ───────────────────────────────────────────────────────────
+grid_color = '#ffffff'
+grid_alpha = 0.06
+grid_step  = 0.5
+xs = np.arange(-PAD_L, total_w + PAD_R + grid_step, grid_step)
+ys = np.arange(-PAD_B, 1.0 + PAD_T + grid_step, grid_step)
+for gx in xs:
+    ax.axvline(gx, color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
+for gy in ys:
+    ax.axhline(gy, color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
+
 # ── Static title — auto-sized to span the full axes width ─────────────────────
 title = ax.text(
     total_w / 2, 1.0 + 1.3,
