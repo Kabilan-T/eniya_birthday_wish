@@ -207,6 +207,11 @@ if '--save' in sys.argv:
                                     metadata={'title': 'Happy Birthday Eniya'})
     ani.save(out, writer=writer, dpi=120)
     print(f'Saved → {out}')
+    # Export last frame as PNG
+    update(TOTAL_FRAMES - 1)
+    png_out = 'output/birthday_eniya.png'
+    fig.savefig(png_out, dpi=120, facecolor=BG)
+    print(f'Saved → {png_out}')
     plt.close(fig)
 else:
     # Default: just show the animation (used by the .exe)
