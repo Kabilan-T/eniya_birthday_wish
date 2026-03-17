@@ -94,16 +94,28 @@ ax.set_ylim(-PAD_B, 1.0 + PAD_T)
 ax.set_aspect('equal')
 ax.axis('off')
 
-# ── Background grid ───────────────────────────────────────────────────────────
+# ── Per-letter grids (local 0–1 coords, aligned to each letter's axes) ────────
 grid_color = '#ffffff'
-grid_alpha = 0.06
-grid_step  = 0.5
-xs = np.arange(-PAD_L, total_w + PAD_R + grid_step, grid_step)
-ys = np.arange(-PAD_B, 1.0 + PAD_T + grid_step, grid_step)
-for gx in xs:
-    ax.axvline(gx, color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
-for gy in ys:
-    ax.axhline(gy, color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
+grid_alpha = 0.08
+grid_step  = 0.25   # gridlines at 0, 0.25, 0.5, 0.75, 1.0
+for L in LETTERS:
+    x0 = L['x_off']
+    x1 = x0 + LETTER_W
+    # vertical lines
+    for gx in np.arange(0, 1.0 + grid_step, grid_step):
+        ax.plot([x0 + gx, x0 + gx], [0.0, 1.0],
+                color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
+    # horizontal lines
+    for gy in np.arange(0, 1.0 + grid_step, grid_step):
+        ax.plot([x0, x1], [gy, gy],
+                color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
+    # bounding box slightly brighter
+    for bx in [x0, x1]:
+        ax.plot([bx, bx], [0.0, 1.0],
+                color=grid_color, lw=0.8, alpha=0.15, zorder=0)
+    for by in [0.0, 1.0]:
+        ax.plot([x0, x1], [by, by],
+                color=grid_color, lw=0.8, alpha=0.15, zorder=0)
 
 # ── Static title — auto-sized to span the full axes width ─────────────────────
 title = ax.text(
