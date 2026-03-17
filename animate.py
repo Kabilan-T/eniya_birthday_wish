@@ -5,10 +5,48 @@ Each letter of ENIYA is drawn stroke by stroke using mathematical functions.
 Formulas are displayed on screen as each stroke is drawn.
 """
 
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from pathlib import Path
+from datetime import date
+
+# ── Argument parsing ───────────────────────────────────────────────────────────
+parser = argparse.ArgumentParser()
+parser.add_argument('--save',        action='store_true', help='Export MP4 + PDF')
+parser.add_argument('--sample_date', type=str, default=None,
+                    help='Simulate a date (YYYY-MM-DD)')
+args, _ = parser.parse_known_args()
+
+if args.sample_date:
+    today = date.fromisoformat(args.sample_date)
+else:
+    today = date.today()
+
+# ── Birthday logic ─────────────────────────────────────────────────────────────
+BIRTH_DATE = date(1996, 5, 1)
+
+def ordinal(n):
+    if 11 <= (n % 100) <= 13:
+        return f'{n}th'
+    return f'{n}{["th","st","nd","rd","th"][min(n % 10, 4)]}'
+
+birthday_this_year = BIRTH_DATE.replace(year=today.year)
+if today >= birthday_this_year:
+    AGE = today.year - BIRTH_DATE.year
+else:
+    AGE = today.year - BIRTH_DATE.year - 1
+
+TITLE_TEXT = f'Happy {ordinal(AGE)} Birthday'
+DAYS_ALIVE = (today - BIRTH_DATE).days
+
+next_bday = BIRTH_DATE.replace(year=today.year)
+if next_bday <= today:
+    next_bday = BIRTH_DATE.replace(year=today.year + 1)
+DAYS_TO_NEXT = (next_bday - today).days
+
+COUNTER_TEXT = f'Days Alive: {DAYS_ALIVE}     |     Next Birthday in: {DAYS_TO_NEXT} days'
 
 # ── Config ────────────────────────────────────────────────────────────────────
 FPS           = 30
@@ -17,10 +55,10 @@ HOLD_FRAMES   = 90      # hold on final frame
 LINE_WIDTH    = 7.0
 
 # Colours
-BG         = '#0d1117'
-C_LETTER   = '#ff79c6'   # pink  — the drawn strokes
-C_FORMULA  = '#8be9fd'   # cyan  — formula text
-C_TITLE    = '#f8f8f2'   # white — "Happy Birthday"
+BG         = '#ffffff'
+C_LETTER   = '#00c896'   # northern lights green — the drawn strokes
+C_FORMULA  = '#8b00ff'   # purple — formula text
+C_TITLE    = '#000000'   # black  — "Happy Birthday"
 
 # Letter geometry (all stroke coords normalised to [0,1] × [0,1])
 LETTER_W = 1.0
@@ -40,30 +78,35 @@ def d(x0, y0, x1, y1, formula):
     return dict(kind='d', x0=x0, y0=y0, x1=x1, y1=y1, formula=formula)
 
 # ── Letter definitions ────────────────────────────────────────────────────────
+# Strokes are in each letter's NATURAL coordinate system so the formulas
+# shown on screen are mathematically exact.  nat_range = (x0, x1, y0, y1).
 LETTERS = [
-    {'char': 'E', 'strokes': [
+    {'char': 'E', 'nat_range': (0, 1, 0, 1), 'strokes': [
         v(0.0, 1.0, 0.0, 'x = 0'),            # backbone  top → bottom
         h(1.0, 0.0, 1.0, 'y = 1'),            # top bar
         h(0.5, 0.0, 0.8, 'y = 0.5'),          # middle bar
         h(0.0, 0.0, 1.0, 'y = 0'),            # bottom bar
     ]},
-    {'char': 'N', 'strokes': [
+    {'char': 'N', 'nat_range': (0, 1, 0, 1), 'strokes': [
         v(0.0, 0.0, 1.0, 'x = 0'),            # left post
         d(0.0, 1.0, 1.0, 0.0, 'y = 1 - x'),  # diagonal
         v(1.0, 0.0, 1.0, 'x = 1'),            # right post
     ]},
-    {'char': 'I', 'strokes': [
-        v(0.5, 0.0, 1.0, 'x = 0'),            # single vertical
+    # I: natural x ∈ [-0.5, 0.5] so the stroke x=0 is centred
+    {'char': 'I', 'nat_range': (-0.5, 0.5, 0, 1), 'strokes': [
+        v(0.0, 0.0, 1.0, 'x = 0'),            # single vertical at x=0
     ]},
-    {'char': 'Y', 'strokes': [
-        d(0.0, 1.0, 0.5, 0.5, 'y = -x'),     # left arm  top → centre
-        d(1.0, 1.0, 0.5, 0.5, 'y = x'),      # right arm top → centre
-        v(0.5, 0.5, 0.0, 'x = 0'),            # stem      centre → bottom
+    # Y: natural x ∈ [-1,1], y ∈ [-1,1] — arms meet at origin (0,0)
+    {'char': 'Y', 'nat_range': (-1, 1, -1, 1), 'strokes': [
+        d(-1.0, 1.0, 0.0, 0.0, 'y = -x'),    # left arm  (-1,1)→(0,0)  y=-x ✓
+        d( 1.0, 1.0, 0.0, 0.0, 'y = x'),     # right arm (1,1)→(0,0)   y=x  ✓
+        v( 0.0, 0.0,-1.0, 'x = 0'),           # stem      (0,0)→(0,-1)  x=0  ✓
     ]},
-    {'char': 'A', 'strokes': [
-        d(0.0, 0.0, 0.5, 1.0, 'y = 1 + x'),  # left leg  bottom → apex
-        d(1.0, 0.0, 0.5, 1.0, 'y = 1 - x'),  # right leg bottom → apex
-        h(0.35, 0.15, 0.85, 'y = 1 - |x|'),  # crossbar
+    # A: natural x ∈ [-1,1], y ∈ [0,1] — apex at (0,1), feet at (±1,0)
+    {'char': 'A', 'nat_range': (-1, 1, 0, 1), 'strokes': [
+        d(-1.0, 0.0, 0.0, 1.0, 'y = 1 + x'),  # left leg  y=1+x ✓
+        d( 1.0, 0.0, 0.0, 1.0, 'y = 1 - x'),  # right leg y=1-x ✓
+        h(0.35, -0.7, 0.7, 'y = 1 - |x|'),    # crossbar
     ]},
 ]
 
@@ -86,7 +129,7 @@ PAD_L, PAD_R = 0.5, 0.5
 PAD_B        = 1.8    # space below letters for formula stack
 PAD_T        = 2.0    # space above for title
 
-fig, ax = plt.subplots(figsize=(14, 8))
+fig, ax = plt.subplots(figsize=(19.2, 10.8))
 fig.patch.set_facecolor(BG)
 ax.set_facecolor(BG)
 ax.set_xlim(-PAD_L, total_w + PAD_R)
@@ -94,33 +137,53 @@ ax.set_ylim(-PAD_B, 1.0 + PAD_T)
 ax.set_aspect('equal')
 ax.axis('off')
 
-# ── Per-letter grids (local 0–1 coords, aligned to each letter's axes) ────────
-grid_color = '#ffffff'
-grid_alpha = 0.08
-grid_step  = 0.25   # gridlines at 0, 0.25, 0.5, 0.75, 1.0
+# ── Per-letter grids — drawn in each letter's natural coordinate system ────────
+grid_color = '#000000'
+axis_color = '#000000'
+
 for L in LETTERS:
-    x0 = L['x_off']
-    x1 = x0 + LETTER_W
-    # vertical lines
-    for gx in np.arange(0, 1.0 + grid_step, grid_step):
-        ax.plot([x0 + gx, x0 + gx], [0.0, 1.0],
-                color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
-    # horizontal lines
-    for gy in np.arange(0, 1.0 + grid_step, grid_step):
-        ax.plot([x0, x1], [gy, gy],
-                color=grid_color, lw=0.5, alpha=grid_alpha, zorder=0)
-    # bounding box slightly brighter
-    for bx in [x0, x1]:
-        ax.plot([bx, bx], [0.0, 1.0],
-                color=grid_color, lw=0.8, alpha=0.15, zorder=0)
-    for by in [0.0, 1.0]:
-        ax.plot([x0, x1], [by, by],
-                color=grid_color, lw=0.8, alpha=0.15, zorder=0)
+    xo = L['x_off']
+    nx0, nx1, ny0, ny1 = L['nat_range']
+
+    # Transform helpers (capture loop vars via defaults)
+    def tx(gx, _xo=xo, _nx0=nx0, _nx1=nx1):
+        return _xo + (gx - _nx0) / (_nx1 - _nx0) * LETTER_W
+    def ty(gy, _ny0=ny0, _ny1=ny1):
+        return (gy - _ny0) / (_ny1 - _ny0) * 1.0
+
+    # Extend grid 10% beyond natural bounds on all sides
+    pad_x = 0.2 * (nx1 - nx0)
+    pad_y = 0.2 * (ny1 - ny0)
+    gx0, gx1 = nx0 - pad_x, nx1 + pad_x
+    gy0, gy1 = ny0 - pad_y, ny1 + pad_y
+
+    sx0, sx1 = tx(gx0), tx(gx1)
+    sy0, sy1 = ty(gy0), ty(gy1)
+
+    # 5 evenly-spaced grid ticks at natural coord positions
+    x_ticks = np.linspace(nx0, nx1, 5)
+    y_ticks = np.linspace(ny0, ny1, 5)
+
+    for gx in x_ticks:
+        if abs(gx) > 1e-9:   # skip x=0 — drawn as axis below
+            ax.plot([tx(gx), tx(gx)], [sy0, sy1],
+                    color=grid_color, lw=0.5, alpha=0.07, zorder=0)
+    for gy in y_ticks:
+        if abs(gy) > 1e-9:   # skip y=0 — drawn as axis below
+            ax.plot([sx0, sx1], [ty(gy), ty(gy)],
+                    color=grid_color, lw=0.5, alpha=0.07, zorder=0)
+
+    # y-axis: natural x = 0 (highlighted, full padded height)
+    ax.plot([tx(0), tx(0)], [sy0, sy1],
+            color=axis_color, lw=1.5, alpha=0.5, zorder=1)
+    # x-axis: natural y = 0 (highlighted, full padded width)
+    ax.plot([sx0, sx1], [ty(0), ty(0)],
+            color=axis_color, lw=1.5, alpha=0.5, zorder=1)
 
 # ── Static title — auto-sized to span the full axes width ─────────────────────
 title = ax.text(
     total_w / 2, 1.0 + 1.3,
-    'Happy 30th Birthday',
+    TITLE_TEXT,
     ha='center', va='center',
     fontsize=32, fontweight='bold',
     color=C_TITLE, fontfamily='serif',
@@ -132,9 +195,18 @@ t_bb      = title.get_window_extent(renderer=renderer)
 ax_bb     = ax.get_window_extent(renderer=renderer)
 title.set_fontsize(32 * (ax_bb.width * 0.97 / t_bb.width))
 
+# ── Day counter ───────────────────────────────────────────────────────────────
+ax.text(
+    total_w / 2, -PAD_B + 0.45,
+    COUNTER_TEXT,
+    ha='center', va='bottom',
+    fontsize=14, color=C_FORMULA, alpha=0.7,
+    fontfamily='monospace',
+)
+
 # ── Signature ─────────────────────────────────────────────────────────────────
 ax.text(
-    total_w + PAD_R - 0.05, -PAD_B + 0.1,
+    total_w + PAD_R - 0.05, -PAD_B + 0.15,
     '— Aaron Stone',
     ha='right', va='bottom',
     fontsize=13, style='italic',
@@ -169,19 +241,23 @@ def ease_inout(t):
     """Smooth acceleration + deceleration."""
     return t * t * (3.0 - 2.0 * t)
 
-def stroke_xy(s, x_off, t):
-    """Return (xs, ys) for stroke s at progress t ∈ [0, 1]."""
+def stroke_xy(s, x_off, nat_range, t):
+    """Return (xs, ys) for stroke s at progress t ∈ [0, 1].
+    Transforms from natural coords → screen coords using nat_range."""
     t = float(np.clip(t, 0.0, 1.0))
+    nx0, nx1, ny0, ny1 = nat_range
+    def tx(nx): return x_off + (nx - nx0) / (nx1 - nx0) * LETTER_W
+    def ty(ny): return (ny - ny0) / (ny1 - ny0) * 1.0
     if s['kind'] == 'h':
         xe = s['x0'] + t * (s['x1'] - s['x0'])
-        return [x_off + s['x0'], x_off + xe], [s['y'], s['y']]
+        return [tx(s['x0']), tx(xe)], [ty(s['y']), ty(s['y'])]
     elif s['kind'] == 'v':
         ye = s['y0'] + t * (s['y1'] - s['y0'])
-        return [x_off + s['x'], x_off + s['x']], [s['y0'], ye]
+        return [tx(s['x']), tx(s['x'])], [ty(s['y0']), ty(ye)]
     else:  # diagonal
         xe = s['x0'] + t * (s['x1'] - s['x0'])
         ye = s['y0'] + t * (s['y1'] - s['y0'])
-        return [x_off + s['x0'], x_off + xe], [s['y0'], ye]
+        return [tx(s['x0']), tx(xe)], [ty(s['y0']), ty(ye)]
 
 # ── Animation update ──────────────────────────────────────────────────────────
 def update(frame):
@@ -197,11 +273,12 @@ def update(frame):
 
     # Draw strokes
     for i, (li, s) in enumerate(all_strokes):
-        x_off = LETTERS[li]['x_off']
+        x_off     = LETTERS[li]['x_off']
+        nat_range = LETTERS[li]['nat_range']
         if i < stroke_idx or holding:
-            xs, ys = stroke_xy(s, x_off, 1.0)
+            xs, ys = stroke_xy(s, x_off, nat_range, 1.0)
         elif i == stroke_idx:
-            xs, ys = stroke_xy(s, x_off, t)
+            xs, ys = stroke_xy(s, x_off, nat_range, t)
         else:
             xs, ys = [], []
         line_artists[i].set_data(xs, ys)
@@ -220,9 +297,7 @@ ani = animation.FuncAnimation(
     blit=True,
 )
 
-import sys
-
-if '--save' in sys.argv:
+if args.save:
     # Export mode: python animate.py --save
     Path('output').mkdir(exist_ok=True)
     out = 'output/birthday_eniya.mp4'
@@ -230,11 +305,11 @@ if '--save' in sys.argv:
                                     metadata={'title': 'Happy Birthday Eniya'})
     ani.save(out, writer=writer, dpi=120)
     print(f'Saved → {out}')
-    # Export last frame as PNG
+    # Export last frame as PDF
     update(TOTAL_FRAMES - 1)
-    png_out = 'output/birthday_eniya.png'
-    fig.savefig(png_out, dpi=120, facecolor=BG)
-    print(f'Saved → {png_out}')
+    pdf_out = 'output/birthday_eniya.pdf'
+    fig.savefig(pdf_out, facecolor=BG)
+    print(f'Saved → {pdf_out}')
     plt.close(fig)
 else:
     # Default: just show the animation (used by the .exe)

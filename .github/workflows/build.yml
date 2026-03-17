@@ -25,6 +25,7 @@ jobs:
           pyinstaller
           --onefile
           --noconsole
+          --collect-all matplotlib
           --name "Happy_Birthday_Eniya"
           animate.py
 
